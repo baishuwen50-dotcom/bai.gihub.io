@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>新年祝福</title>
+<link href="https://fonts.googleapis.com/css2?family=Chewy&display=swap" rel="stylesheet">
+<style>
+  body, html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: black;
+    text-align: center;
+  }
+
+  #inputDiv {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+  }
+
+  #inputDiv input, #inputDiv button {
+    padding: 12px;
+    font-size: 1em;
+    margin: 5px;
+    border-radius: 8px;
+    border: none;
+  }
+
+  #inputDiv button {
+    cursor: pointer;
+    background: linear-gradient(45deg,#ff5f6d,#ffc371);
+    color: white;
+    font-weight: bold;
+    transition: transform 0.2s;
+  }
+
+  #inputDiv button:hover { transform: scale(1.1); }
+
+  #message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2em;
+    line-height: 1.2em;
+    max-width: 90%;
+    white-space: pre-line;
+    text-align: center;
+  }
+
+  #toMin {
+    color: white;
+    font-style: italic;
+    font-size: 1.2em;
+    margin-bottom: 0.3em;
+  }
+
+  #blessContent {
+    color: #00BFFF;
+    font-family: "Chewy", cursive;
+    margin-top: 1em;
+  }
+</style>
+</head>
+<body>
+
+<div id="inputDiv">
+  <input type="text" id="nameInput" placeholder="请输入姓名">
+  <button onclick="checkName()">确认</button>
+</div>
+
+<div id="message">
+  <span id="toMin"></span>
+  <span id="blessContent"></span>
+</div>
+
+<canvas id="fireworkCanvas"></canvas>
+
+<script>
+const allowedName = "min";
+let name = "";
+const blessings = `2026 新年快乐
+
+愿你眼底映星辰，心底藏繁花，
+在平凡烟火中捕捉惊喜，
+于万象更新里抵达理想。
+愿你未来步履轻盈,岁岁平安(奥,对了还有天天开心哦)
+-泊娜娜`;
+
+function checkName() {
+  const input = document.getElementById("nameInput").value.trim();
+  if(input === allowedName){
+    name = input;
+    document.getElementById("inputDiv").style.display="none";
+    document.getElementById("toMin").innerText = `To ${name}`;
+    document.getElementById("blessContent").innerText = blessings;
+    startFireworks();
+  } else {
+    alert("姓名不正确，无法继续！");
+  }
+}
+
+/* ---------------- 烟花特效（火箭粒子存在，爆炸粒子消失不残留） ---------------- */
+const canvas = document.getElementById("fireworkCanvas");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let fireworks = [];
+let particles = [];
+
+// 生成66种颜色（HSL色环渐变）
+const colorPalette = [];
+for(let i=0;i<66;i++){
+  const hue = Math.floor(i * (360/66)); 
+  colorPalette.push(`hsl(${hue}, 100%, 50%)`);
+}
+
+let colorIndex = 0;
+function pickColorSet(){
+  // 每朵烟花选择4个相近色，形成同色系融合
+  const set = [];
+  for(let i=0;i<4;i++){
+    set.push(colorPalette[(colorIndex+i)%colorPalette.length]);
+  }
+  colorIndex = (colorIndex+4) % colorPalette.length;
+  return set;
+}
+
+class Firework{
+  constructor(x,y){
+    this.x = x;
+    this.y = canvas.height;
+    this.targetY = y;
+    this.speed = random(8,14);
+    this.exploded = false;
+    this.colors = pickColorSet();
+    this.radius = 3*1.5; // 放大50%
+  }
+  update(){
+    this.y -= this.speed;
+    this.speed *= 0.98;
+    if(this.y <= this.targetY && !this.exploded){
+      this.explode();
+      this.exploded = true;
+    }
+  }
+  explode(){
+    let particleCount = Math.floor(120 * 1.5 * 1.5); // 增加粒子密度
+    for(let i=0;i<particleCount;i++){
+      const color = this.colors[i % this.colors.length];
+      particles.push(new Particle(this.x,this.y,color));
+    }
+  }
+  draw(){
+    if(!this.exploded){
+      ctx.beginPath();
+      ctx.arc(this.x,this.y,this.radius,0,Math.PI*2);
+      ctx.fillStyle = this.colors[0];
+      ctx.fill();
+    }
+  }
+}
+
+class Particle{
+  constructor(x,y,color){
+    this.x = x; this.y = y;
+    const angle = Math.random()*Math.PI*2;
+    const speed = random(2,8); 
+    this.speedX = Math.cos(angle)*speed;
+    this.speedY = Math.sin(angle)*speed;
+    this.alpha = 1;
+    this.color = color;
+    this.gravity = 0.05;
+    this.radius = random(0.8,1.5); // 粒子更细
+  }
+  update(){
+    this.speedY += this.gravity;
+    this.x += this.speedX;
+    this.y += this.speedY;
+    this.alpha -= 0.015;
+  }
+  draw(){
+    if(this.alpha > 0){ // 粒子消失后不再绘制
+      ctx.globalAlpha = this.alpha;
+      ctx.beginPath();
+      ctx.arc(this.x,this.y,this.radius,0,Math.PI*2);
+      ctx.fillStyle = this.color;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+function startFireworks(){
+  setInterval(()=>{
+    fireworks.push(new Firework(random(50,canvas.width-50),random(50,canvas.height/2)));
+  },300); // 提高发射频率
+  requestAnimationFrame(animate);
+}
+
+function animate(){
+  ctx.fillStyle = "rgba(0,0,0,0.15)";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  fireworks.forEach((fw,i)=>{
+    fw.update(); 
+    fw.draw();
+    if(fw.exploded) fireworks.splice(i,1);
+  });
+
+  particles.forEach((p,i)=>{
+    p.update(); 
+    p.draw();
+    if(p.alpha <= 0) particles.splice(i,1);
+  });
+
+  requestAnimationFrame(animate);
+}
+
+window.addEventListener("resize",()=>{
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+
+function random(min,max){return Math.random()*(max-min)+min;}
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
